@@ -2,8 +2,8 @@
 public class Test {
 
 	public static void main(String[] args) {
-		String captured = "XXXOOXX";
-		System.out.println(captured.length() - captured.replace("X", "").length());
+		String select = "23";
+		System.out.println(Integer.parseInt(select.substring(1, 2)));
 	}
 
 }

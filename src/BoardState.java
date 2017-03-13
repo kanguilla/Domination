@@ -98,7 +98,7 @@ public class BoardState extends State{
 				
 				if (stack.length() > 0){
 					BoardState ns = new BoardState(this.depth+1, 0);
-					ns.history = stack.charAt(stack.length()-1) + " puts a reserved piece ["+Players.name(player)+"] on " + new Pair(x, y) + " [" + board.get(new Pair(x, y))+ "]";
+					ns.history = Players.players[player] + " puts a reserved piece ["+Players.name(player)+"] on " + new Pair(x, y) + " [" + board.get(new Pair(x, y))+ "]";
 					ns.board = new HashMap<Pair, String>(this.board);
 					ns.reserve[0] = this.reserve[0];
 					ns.reserve[1] = this.reserve[1];
@@ -194,14 +194,14 @@ public class BoardState extends State{
 			for(int j = -1; j<maxY+1;j++){
 				
 				if (i == -1 || i == maxX){
-					if (j < maxY)out+=("----");
+					if (j < maxY)out+=("--"+(j+1)+"-");
 				}else if (j == -1 || j == maxY){
-					out+=("| ");
+					out+=("|" + i);
 				}else{		
 					String stack = board.get(new Pair(i, j));
 					
 					if (stack == null){
-						out+=(" -  ");
+						out+=(" -- ");
 					}else if(stack.length() == 0){
 						out+=("    ");
 					}else if(stack.length() > 1){
@@ -320,33 +320,74 @@ public class BoardState extends State{
 		return (s.length() - s.replace(exp, "").length());
 	}
 	
-	class Pair {
-		int x;
-		int y;
+	public BoardState getMove(Pair init, Pair target, int height, int player){
+		BoardState ns = new BoardState(this.depth+1, 0);
+	
+		String neighbour = board.get(target);
+		String stack;
 		
-		public Pair(int x, int y) {
-			this.x = x;
-			this.y = y;
-		}
-		
-		@Override
-		public boolean equals(Object other) {
-			return (this.x == ((Pair)other).x && this.y == ((Pair)other).y);
+		if (init == null){
+			if (reserve[player] < 1){
+				System.out.println("You don't have a reserve...");
+				return this;
+			}else{
+				
+					ns.history = "Human puts a reserved piece ["+Players.name(player)+"] on " + target + " [" + board.get(target)+ "]";
+					ns.board = new HashMap<Pair, String>(this.board);
+					ns.reserve[0] = this.reserve[0];
+					ns.reserve[1] = this.reserve[1];
+					ns.capture[0] = this.capture[0];
+					ns.capture[1] = this.capture[1];
+					
+					String captured = ns.addPiece(Players.name(player), target.x, target.y);
+					
+					ns.reserve[player] += occurrences(Players.name(player), captured);
+					ns.capture[player] += occurrences(Players.name(Players.other(player)), captured);
+					ns.reserve[player] --;
+							
+					ns.recount();
+					
+					return ns;
+				
+			}
+		}else{
+			stack = board.get(init);
+			if (height == stack.length()){		
+				ns.history = "Human moves [" + stack + "] from " + init + " to " + target;
+			}else{
+				ns.history = "Human splits [" + stack.substring(0, stack.length()-height) + "|" + stack.substring(stack.length()-height, stack.length()) + "] at " + init + " and moves the top to " + target;
+			}
+			
+			ns.board = new HashMap<Pair, String>(this.board);
+			ns.reserve[0] = this.reserve[0];
+			ns.reserve[1] = this.reserve[1];
+			ns.capture[0] = this.capture[0];
+			ns.capture[1] = this.capture[1];
+			
+			String top = stack.substring(stack.length()-height);
+			String bottom = stack.substring(0, stack.length()-height);
+			
+			ns.board.put(init, bottom);
+			
+			String newStack = neighbour + top;
+			String captured = newStack.substring(0, Math.max(newStack.length()-5, 0));
+			String leftover = newStack.substring(Math.max(newStack.length()-5, 0), newStack.length());
+			
+			ns.reserve[player] += occurrences(Players.name(player), captured);
+			ns.capture[player] += occurrences(Players.name(Players.other(player)), captured);
+			
+			ns.board.put(target, leftover);
+			
+			ns.recount();
+			
+			return ns;
 		}
 
-		@Override
-		public int hashCode() {
-	        int result = 17;
-	        result = 31 * result + x + y;
-	        return result;
-	    }
-
-		public int difference(Pair key) {
-			return (int) Math.hypot(Math.abs(key.x - x),  Math.abs(key.y - y));
-		}
-		@Override
-		public String toString(){
-			return "(" + x + "," + y + ")";
-		}
+		
 	}
+	
+	public String getContents(Pair loc){
+		return board.get(loc);
+	}
+	
 }

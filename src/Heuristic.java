@@ -18,7 +18,7 @@ class StackSize extends Heuristic{
 	@Override
 	public int score(BoardState state, int player) {
 		int h = 0;
-		for (Entry<BoardState.Pair, String> e : state.board.entrySet()){
+		for (Entry<Pair, String> e : state.board.entrySet()){
 			String s = e.getValue();
 			if (s == null || s == " " || s.length() < 1)continue;
 			if (s.charAt(s.length()-1) == Players.players[player].charAt(0)){

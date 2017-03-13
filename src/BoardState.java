@@ -12,27 +12,34 @@ public class BoardState extends State{
 			if (e.getValue() == null || e.getValue() == " " || e.getValue().length() < 1)continue;
 			if (e.getValue().charAt(e.getValue().length()-1) == 'X'){
 				stat.scoreX++;
-				if (e.getValue().length()>1)stat.scoreX+=e.getValue().length();
+				stat.presenceX++;
+				//stat.scoreX += e.getValue().length();
 				stat.scoreX += captureX * 10;
-				stat.scoreX += reserveX * 10;
+				//stat.scoreX += reserveX * 10;
 			}else{
 				stat.scoreO++;
-				if (e.getValue().length()>1)stat.scoreO+=e.getValue().length();
+				stat.presenceO++;
+				//stat.scoreO += e.getValue().length();
 				stat.scoreO += captureO * 10;
-				stat.scoreO += reserveO * 10;
+				//stat.scoreO += reserveO * 10;
 			}
 		}
 		return stat;
+		
 	}
 	
 	class Stat {
 		int scoreX = 0;
 		int scoreO = 0;
+		
+		int presenceX = 0;
+		int presenceO = 0;
+		
 		public int score(String player){
 			return (player == "X") ? scoreX  : scoreO;
 			}
 		public boolean isComplete() {
-			return scoreX == 0 || scoreO == 0;
+			return presenceX == 0 || presenceO == 0;
 		}
 	}
 	
@@ -115,12 +122,12 @@ public class BoardState extends State{
 					String captured = ns.addPiece(activeChar, x, y);
 					
 					if (activeChar == "X"){
-						ns.reserveX += (captured.length() - captured.replace("X", "").length());
-						ns.captureX += (captured.length() - captured.replace("O", "").length());
+						ns.reserveX += occurrences("X", captured);
+						ns.captureX += occurrences("O", captured);
 						ns.reserveX --;
 					}else{
-						ns.reserveO += (captured.length() - captured.replace("O", "").length());
-						ns.captureO += (captured.length() - captured.replace("X", "").length());
+						ns.reserveO += occurrences("O", captured);
+						ns.captureO += occurrences("X", captured);
 						ns.reserveO --;
 					}
 					out.add(ns);
@@ -161,11 +168,11 @@ public class BoardState extends State{
 					String leftover = newStack.substring(Math.max(newStack.length()-5, 0), newStack.length());
 	
 					if (stack.charAt(stack.length()-1) == "X".charAt(0)){
-						ns.reserveX += (captured.length() - captured.replace("X", "").length());
-						ns.captureX += (captured.length() - captured.replace("O", "").length());
+						ns.reserveX += occurrences("X", captured);
+						ns.captureX += occurrences("O", captured);
 					}else{
-						ns.reserveO += (captured.length() - captured.replace("O", "").length());
-						ns.captureO += (captured.length() - captured.replace("X", "").length());
+						ns.reserveO += occurrences("O", captured);
+						ns.captureO += occurrences("X", captured);
 					}
 					
 					ns.board.put(newLoc, leftover);
@@ -272,6 +279,10 @@ public class BoardState extends State{
         result = 31 * result + board.hashCode();
         result = 31 * result + totalCost;
         return result;
+	}
+	
+	public int occurrences(String exp, String s){
+		return (s.length() - s.replace(exp, "").length());
 	}
 	
 	class Pair {

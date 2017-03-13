@@ -45,7 +45,7 @@ public class AlphaBeta {
 			int v = Integer.MAX_VALUE;
 			
 			ArrayList<State> children = state.expand(activeChar);
-			Collections.shuffle(children);
+			//Collections.shuffle(children);
 			
 			for (State s :children){
 				int child = alphaBeta((BoardState) s, depth-1, alpha, beta, other(activeChar), true).score;

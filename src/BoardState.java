@@ -15,11 +15,11 @@ public class BoardState extends State{
 	int presence[] = {18, 18};
 	int reserve[] = new int[2];
 	int capture[] = new int[2];
-	
+	boolean lowImpact = false;
 	
 	public boolean isComplete(){
 		recount();
-		return (presence[0] == 0 || presence[1] == 0);
+		return ((presence[0] == 0 && reserve[0] == 0) || (presence[1] == 0 && reserve[1] == 0));
 	}
 	
 	public void recount(){
@@ -62,6 +62,9 @@ public class BoardState extends State{
 	public ArrayList<State> expand(int player) {
 	
 		ArrayList<State> out = new ArrayList<State>();
+		
+		out.addAll(movesReserve(player));
+		
 		for (Entry<Pair, String> e : board.entrySet()){
 			if (e.getValue() == null)continue;
 			int x = e.getKey().x;
@@ -73,7 +76,6 @@ public class BoardState extends State{
 				out.addAll(moves(x, y, s, false, player));
 			}
 		}
-		out.addAll(movesReserve(player));
 		//System.out.println("Expanded " + out.size() + " options for " + activeChar);
 		return out;
 	}
@@ -90,9 +92,13 @@ public class BoardState extends State{
 				int y = e.getKey().y;
 				String stack = e.getValue();
 				
+				if (!stack.contains(Players.name(Players.other(player)))){
+					continue;
+				}
+				
 				if (stack.length() > 0){
 					BoardState ns = new BoardState(this.depth+1, 0);
-					ns.history = stack.charAt(stack.length()-1) + " puts a reserved piece on " + new Pair(x, y + i);
+					ns.history = stack.charAt(stack.length()-1) + " puts a reserved piece ["+Players.name(player)+"] on " + new Pair(x, y) + " [" + board.get(new Pair(x, y))+ "]";
 					ns.board = new HashMap<Pair, String>(this.board);
 					ns.reserve[0] = this.reserve[0];
 					ns.reserve[1] = this.reserve[1];
@@ -104,7 +110,7 @@ public class BoardState extends State{
 					ns.reserve[player] += occurrences(Players.name(player), captured);
 					ns.capture[player] += occurrences(Players.name(Players.other(player)), captured);
 					ns.reserve[player] --;
-					
+							
 					ns.recount();
 					
 					out.add(ns);
@@ -125,13 +131,22 @@ public class BoardState extends State{
 				
 				if (i == 0)continue;
 				String neighbour = board.get(newLoc);
+	
 				if (neighbour != null){
 		
-					BoardState ns = new BoardState(this.depth+1, 0);
-					ns.history = stack.charAt(stack.length()-1) + 
-							" moves a stack of size " + height + " from " + new Pair(x, y) + " to " + 
-							((vertical) ? new Pair(x + i, y) : new Pair(x, y + i));
+					if (!neighbour.contains(Players.name(Players.other(player)))){
+						lowImpact = true;
+					}
 					
+					BoardState ns = new BoardState(this.depth+1, 0);
+					
+					if (height == stack.length()){		
+						ns.history = Players.name(player) + " moves [" + stack + "] from " + new Pair(x, y) + " to " + 
+							((vertical) ? new Pair(x + i, y) : new Pair(x, y + i));
+					}else{
+						ns.history = Players.name(player) + " splits [" + stack.substring(0, stack.length()-height) + "|" + stack.substring(stack.length()-height, stack.length()) + "] at " + new Pair(x, y) + " and moves the top to " + 
+							((vertical) ? new Pair(x + i, y) : new Pair(x, y + i));
+					}
 					
 					ns.board = new HashMap<Pair, String>(this.board);
 					ns.reserve[0] = this.reserve[0];

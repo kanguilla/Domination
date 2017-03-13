@@ -14,18 +14,28 @@ public class AlphaBeta {
 
 	Heuristic h;
 	boolean shuffle;
+	int depth;
 	
-	public AlphaBeta(Heuristic h, boolean shuffle){
+	public AlphaBeta(int depth, Heuristic h, boolean shuffle){
 		this.h = h;
 		this.shuffle = shuffle;
+		this.depth = depth;
 	}
 	
-	public Move alphaBeta(BoardState state, int depth, int alpha, int beta, int player, boolean maximize){
+	
+	public Move alphaBeta(BoardState state, int player){
+		return alphaBetaBody(state, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, player, true);
+	}
+	
+	public Move alphaBetaBody(BoardState state, int depth, int alpha, int beta, int player, boolean maximize){
 		
 		state.recount();
 		if (depth == 0 || (state.isComplete())){
 			
-			int score = h.score(state, Players.other(player));
+			int score = h.score(state, player);
+			if (state.isComplete()){
+				score = Integer.MAX_VALUE;
+			}
 			return new Move(score, state);
 		}
 		
@@ -43,7 +53,7 @@ public class AlphaBeta {
 			
 			for (State s : children){
 				
-				int child = alphaBeta((BoardState) s, depth-1, alpha, beta, Players.other(player), false).score;
+				int child = alphaBetaBody((BoardState) s, depth-1, alpha, beta, Players.other(player), false).score;
 				//System.out.println("child has value " + child);
 				if (child > v){
 					v = child;
@@ -70,7 +80,7 @@ public class AlphaBeta {
 			BoardState best = (BoardState) children.get(0);
 			
 			for (State s :children){
-				int child = alphaBeta((BoardState) s, depth-1, alpha, beta, Players.other(player), true).score;
+				int child = alphaBetaBody((BoardState) s, depth-1, alpha, beta, Players.other(player), true).score;
 				
 				if (child < v){
 					v = child;

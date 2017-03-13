@@ -13,7 +13,7 @@ public abstract class State {
 	}
 	
 	public abstract int difference(State other);
-	public abstract ArrayList<State> expand(String s);
+	public abstract ArrayList<State> expand(int player);
 	@Override
 	public abstract boolean equals(Object other);
 	@Override

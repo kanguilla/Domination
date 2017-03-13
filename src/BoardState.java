@@ -4,45 +4,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 public class BoardState extends State{
-	
-	public Stat stat() {
-		Stat stat = new Stat();
-
-		for (Entry<Pair, String> e : board.entrySet()){
-			if (e.getValue() == null || e.getValue() == " " || e.getValue().length() < 1)continue;
-			if (e.getValue().charAt(e.getValue().length()-1) == 'X'){
-				stat.scoreX++;
-				stat.presenceX++;
-				//stat.scoreX += e.getValue().length();
-				stat.scoreX += captureX * 10;
-				//stat.scoreX += reserveX * 10;
-			}else{
-				stat.scoreO++;
-				stat.presenceO++;
-				//stat.scoreO += e.getValue().length();
-				stat.scoreO += captureO * 10;
-				//stat.scoreO += reserveO * 10;
-			}
-		}
-		return stat;
-		
-	}
-	
-	class Stat {
-		int scoreX = 0;
-		int scoreO = 0;
-		
-		int presenceX = 0;
-		int presenceO = 0;
-		
-		public int score(String player){
-			return (player == "X") ? scoreX  : scoreO;
-			}
-		public boolean isComplete() {
-			return presenceX == 0 || presenceO == 0;
-		}
-	}
-	
 	//data
 	
 	public BoardState(int depth, int distance) {
@@ -50,12 +11,31 @@ public class BoardState extends State{
 	}
 	
 	Map<Pair, String> board = new HashMap<Pair, String>();
-	int reserveX;
-	int captureX;
 	
-	int reserveO;
-	int captureO;
+	int presence[] = {18, 18};
+	int reserve[] = new int[2];
+	int capture[] = new int[2];
 	
+	
+	public boolean isComplete(){
+		recount();
+		return (presence[0] == 0 || presence[1] == 0);
+	}
+	
+	public void recount(){
+		presence[0] = 0;
+		presence[1] = 0;
+		for (Entry<Pair, String> e : board.entrySet()){
+			String s = e.getValue();
+			if (s == null || s == " " || s.length() < 1)continue;
+			if (s.charAt(s.length()-1) == Players.players[0].charAt(0)){
+				presence[0]++;
+			}
+			if (s.charAt(s.length()-1) == Players.players[1].charAt(0)){
+				presence[1]++;
+			}
+		}
+	}
 	
 	public boolean setStack(String stack, int x, int y){
 		board.put(new Pair(x, y), stack);
@@ -79,7 +59,7 @@ public class BoardState extends State{
 	}
 
 	@Override
-	public ArrayList<State> expand(String activeChar) {
+	public ArrayList<State> expand(int player) {
 	
 		ArrayList<State> out = new ArrayList<State>();
 		for (Entry<Pair, String> e : board.entrySet()){
@@ -88,20 +68,20 @@ public class BoardState extends State{
 			int y = e.getKey().y;
 			String s = e.getValue();
 			
-			if (s.endsWith(activeChar)){
-				out.addAll(moves(x, y, s, true));
-				out.addAll(moves(x, y, s, false));
+			if (s.endsWith(Players.name(player))){
+				out.addAll(moves(x, y, s, true, player));
+				out.addAll(moves(x, y, s, false, player));
 			}
 		}
-		out.addAll(movesReserve(activeChar));
+		out.addAll(movesReserve(player));
 		//System.out.println("Expanded " + out.size() + " options for " + activeChar);
 		return out;
 	}
 
-	public ArrayList<State> movesReserve(String activeChar){
+	public ArrayList<State> movesReserve(int player){
 		ArrayList<State> out = new ArrayList<State>();
 		
-		int i = (activeChar == "X") ? reserveX : reserveO;
+		int i = reserve[player];
 		
 		if (i > 0){
 			for (Entry<Pair, String> e : board.entrySet()){
@@ -112,24 +92,21 @@ public class BoardState extends State{
 				
 				if (stack.length() > 0){
 					BoardState ns = new BoardState(this.depth+1, 0);
-					//ns.history = stack.charAt(stack.length()-1) + " " +  new Pair(x, y) + " can move " + ((vertical) ? new Pair(x + i, y) : new Pair(x, y + i));
+					ns.history = stack.charAt(stack.length()-1) + " puts a reserved piece on " + new Pair(x, y + i);
 					ns.board = new HashMap<Pair, String>(this.board);
-					ns.reserveX = this.reserveX;
-					ns.reserveO = this.reserveO;
-					ns.captureX = this.captureX;
-					ns.captureO = this.captureO;
+					ns.reserve[0] = this.reserve[0];
+					ns.reserve[1] = this.reserve[1];
+					ns.capture[0] = this.capture[0];
+					ns.capture[1] = this.capture[1];
 					
-					String captured = ns.addPiece(activeChar, x, y);
+					String captured = ns.addPiece(Players.name(player), x, y);
 					
-					if (activeChar == "X"){
-						ns.reserveX += occurrences("X", captured);
-						ns.captureX += occurrences("O", captured);
-						ns.reserveX --;
-					}else{
-						ns.reserveO += occurrences("O", captured);
-						ns.captureO += occurrences("X", captured);
-						ns.reserveO --;
-					}
+					ns.reserve[player] += occurrences(Players.name(player), captured);
+					ns.capture[player] += occurrences(Players.name(Players.other(player)), captured);
+					ns.reserve[player] --;
+					
+					ns.recount();
+					
 					out.add(ns);
 				}
 			}
@@ -138,7 +115,7 @@ public class BoardState extends State{
 		return out;
 	}
 	
-	public ArrayList<State> moves(int x, int y, String stack, boolean vertical){
+	public ArrayList<State> moves(int x, int y, String stack, boolean vertical, int player){
 		ArrayList<State> out = new ArrayList<State>();
 		
 		for (int height = stack.length(); height > 0; height--){
@@ -151,12 +128,16 @@ public class BoardState extends State{
 				if (neighbour != null){
 		
 					BoardState ns = new BoardState(this.depth+1, 0);
-					ns.history = stack.charAt(stack.length()-1) + " " +  new Pair(x, y) + " can move " + ((vertical) ? new Pair(x + i, y) : new Pair(x, y + i));
+					ns.history = stack.charAt(stack.length()-1) + 
+							" moves a stack of size " + height + " from " + new Pair(x, y) + " to " + 
+							((vertical) ? new Pair(x + i, y) : new Pair(x, y + i));
+					
+					
 					ns.board = new HashMap<Pair, String>(this.board);
-					ns.reserveX = this.reserveX;
-					ns.reserveO = this.reserveO;
-					ns.captureX = this.captureX;
-					ns.captureO = this.captureO;
+					ns.reserve[0] = this.reserve[0];
+					ns.reserve[1] = this.reserve[1];
+					ns.capture[0] = this.capture[0];
+					ns.capture[1] = this.capture[1];
 					
 					String top = stack.substring(stack.length()-height);
 					String bottom = stack.substring(0, stack.length()-height);
@@ -166,17 +147,14 @@ public class BoardState extends State{
 					String newStack = neighbour + top;
 					String captured = newStack.substring(0, Math.max(newStack.length()-5, 0));
 					String leftover = newStack.substring(Math.max(newStack.length()-5, 0), newStack.length());
-	
-					if (stack.charAt(stack.length()-1) == "X".charAt(0)){
-						ns.reserveX += occurrences("X", captured);
-						ns.captureX += occurrences("O", captured);
-					}else{
-						ns.reserveO += occurrences("O", captured);
-						ns.captureO += occurrences("X", captured);
-					}
+			
+					ns.reserve[player] += occurrences(Players.name(player), captured);
+					ns.capture[player] += occurrences(Players.name(Players.other(player)), captured);
 					
 					ns.board.put(newLoc, leftover);
-
+					
+					ns.recount();
+					
 					out.add(ns);
 				}
 			}
@@ -227,10 +205,11 @@ public class BoardState extends State{
 				out+=("|\n");
 			}
 		}
-		Stat s = stat();
-		out+=("\nX: " + s.scoreX + "  O: " + s.scoreO);
-		out+=("\nX Reserve: " + reserveX + "  Captured: " + captureX);
-		out+=("\nO Reserve: " + reserveO + "  Captured: " + captureO);
+		
+		
+		for (int i = 0; i < Players.players.length; i++){
+			out+=("\n"+Players.name(i)+" -> Stacks:" + presence[i] + " Reserve:" + reserve[i] + " Capture:" + capture[i]);
+		}
 		return out;
 	}
 	
@@ -247,8 +226,49 @@ public class BoardState extends State{
 						c = !c;
 						n = 0;
 					}
-					b.setStack((c)? "O" : "X", i, j);
+					b.setStack(Players.players[(c)? 0 : 1], i, j);
 					n++;
+				}
+			}
+		}
+		
+		for (int k = 0 ; k < 4; k++){
+			b.setStack("", 0, k+2);
+			b.setStack("", 7, k+2);
+			b.setStack("", k+2, 0);
+			b.setStack("", k+2, 7);
+		}
+		
+		return b;
+	}
+	
+	static BoardState setupRandom(){
+		BoardState b = new BoardState(0, 0);
+		int xs = 18;
+		int os = 18;
+
+		for (int i = 0; i < 8; i++){
+			for (int j = 0; j < 8; j++){
+				if (i == 0 || j == 0 || i == 7 || j == 7){
+					b.setStack(null, i, j);
+				}else{
+					if (Math.random() < 0.5){
+						if (xs > 0){
+							xs--;
+							b.setStack(Players.players[0], i, j);
+						}else{
+							os--;
+							b.setStack(Players.players[1], i, j);
+						}
+					}else{
+						if (os > 0){
+							os--;
+							b.setStack(Players.players[1], i, j);
+						}else{
+							xs--;
+							b.setStack(Players.players[0], i, j);
+						}
+					}
 				}
 			}
 		}
